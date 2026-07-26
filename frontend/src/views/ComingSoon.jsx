@@ -139,7 +139,7 @@ const ComingSoon = () => {
 
           <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t border-brand-blue-light/20">
             <a
-              href="tel:+919999999999"
+              href="tel:+919638433729"
               className="flex flex-col items-center justify-center p-2.5 sm:p-4 bg-brand-blue-deep rounded-xl border border-brand-blue-light/30 text-brand-gold hover:bg-brand-blue-light/20 transition-all text-center"
             >
               <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -147,7 +147,7 @@ const ComingSoon = () => {
             </a>
 
             <a
-              href="https://wa.me/919999999999"
+              href="https://wa.me/919638433729"
               target="_blank"
               rel="noopener noreferrer"
               className="flex flex-col items-center justify-center p-2.5 sm:p-4 bg-brand-blue-deep rounded-xl border border-brand-blue-light/30 text-brand-gold hover:bg-brand-blue-light/20 transition-all text-center"

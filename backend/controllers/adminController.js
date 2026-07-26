@@ -109,10 +109,8 @@ const getUsers = async (req, res) => {
       cardIds = cards.map(c => c._id);
 
       query.$or = [
-        { name: searchRegex },
+        { fullName: searchRegex },
         { email: searchRegex },
-        { phone: searchRegex },
-        { city: searchRegex },
       ];
 
       if (cardIds.length > 0) {
@@ -240,8 +238,6 @@ const exportCsv = async (req, res) => {
     const headers = [
       'Name',
       'Email',
-      'Phone',
-      'City',
       'Card Number',
       'Reward',
       'Redeemed Status',
@@ -264,10 +260,8 @@ const exportCsv = async (req, res) => {
       const escape = (str) => `"${String(str).replace(/"/g, '""')}"`;
 
       const row = [
-        escape(user.name),
+        escape(user.fullName),
         escape(user.email),
-        escape(user.phone),
-        escape(user.city),
         escape(cardNum),
         escape(reward),
         escape(redeemed),
@@ -323,7 +317,7 @@ const resetCampaign = async (req, res) => {
     console.log('Resetting Campaign initiated by admin...');
     
     // Clear collections
-    await User.deleteMany({});
+    await User.collection.drop().catch(() => {});
     await RedemptionLog.deleteMany({});
     await Card.deleteMany({});
     

@@ -3,39 +3,34 @@ const router = express.Router();
 
 // Controllers
 const { getCampaignStatus, getWinners } = require('../controllers/campaignController');
-const { requestOtp, verifyOtp, registerUser, getCurrentUser } = require('../controllers/authController');
+const { googleLogin, getCurrentUser } = require('../controllers/authController');
 const adminController = require('../controllers/adminController');
 
 // Middlewares
 const { authenticateUser, authenticateAdmin } = require('../middlewares/auth');
-const { otpLimiter, authLimiter, globalAuthLimiter } = require('../middlewares/rateLimiter');
+const { authLimiter, globalAuthLimiter } = require('../middlewares/rateLimiter');
 
 // Validators
 const {
   validate,
-  otpRequestSchema,
-  otpVerifySchema,
-  registerSchema,
+  googleAuthSchema,
   adminLoginSchema,
 } = require('../validators/schemas');
 
 // ==========================================
 // PUBLIC / CAMPAIGN ROUTES
 // ==========================================
+// Get public campaign status and configurations
 router.get('/campaign/status', getCampaignStatus);
+
+// Get winners board
 router.get('/campaign/winners', getWinners);
 
 // ==========================================
-// CUSTOMER AUTHENTICATION & REGISTRATION
+// CUSTOMER AUTHENTICATION
 // ==========================================
-// Request OTP (Rate limited globally and by IP, validated email)
-router.post('/auth/otp/request', globalAuthLimiter, otpLimiter, validate(otpRequestSchema), requestOtp);
-
-// Verify OTP (Validated OTP and email)
-router.post('/auth/otp/verify', validate(otpVerifySchema), verifyOtp);
-
-// Complete Registration (Rate limited globally and by IP, validated details, requires otp session token)
-router.post('/auth/register', globalAuthLimiter, authLimiter, validate(registerSchema), registerUser);
+// Google Login / Auto-Registration (Rate limited globally and by IP)
+router.post('/auth/google', globalAuthLimiter, authLimiter, validate(googleAuthSchema), googleLogin);
 
 // Load customer profile (Requires customer JWT)
 router.get('/auth/me', authenticateUser, getCurrentUser);

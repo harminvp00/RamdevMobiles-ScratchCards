@@ -90,22 +90,21 @@ const Dashboard = () => {
           </div>
 
           {userData && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-slate-300">
-              <div className="flex items-center space-x-2">
-                <User className="text-slate-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="font-semibold text-white truncate">{userData.name}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="text-slate-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span>+91 {userData.phone}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="text-slate-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="truncate">{userData.email}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="text-slate-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span>{userData.city}</span>
+            <div className="flex items-center space-x-4 p-2 bg-brand-blue-deep/30 rounded-xl border border-brand-blue-light/20">
+              {userData.profilePicture ? (
+                <img 
+                  src={userData.profilePicture} 
+                  alt="Profile" 
+                  className="w-12 h-12 rounded-full border-2 border-brand-gold/30 object-cover shadow-md shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-brand-gold/10 border-2 border-brand-gold/30 flex items-center justify-center text-brand-gold shadow-md shrink-0">
+                  <User className="h-6 w-6" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h4 className="font-extrabold text-white text-sm sm:text-base truncate">{userData.fullName}</h4>
+                <p className="text-xs text-slate-400 truncate">{userData.email}</p>
               </div>
             </div>
           )}
@@ -119,11 +118,12 @@ const Dashboard = () => {
             </h3>
             
             <RewardCardDownloader
-              userName={userData.name}
+              userName={userData.fullName}
               cardNumber={userData.assignedCard.cardNumber}
               rewardText={userData.assignedCard.reward}
               isRedeemed={userData.assignedCard.redeemed}
               token={userData.assignedCard.token}
+              email={userData.email}
             />
 
             {/* Status explanation block */}
@@ -167,7 +167,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="glass-panel p-6 rounded-2xl text-center text-slate-400 text-sm">
-            No scratch card assigned yet. Please verify your email first.
+            No scratch card assigned yet. Please log in with Google first.
           </div>
         )}
 

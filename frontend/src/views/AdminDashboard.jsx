@@ -384,7 +384,7 @@ const AdminDashboard = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
               <input
                 type="text"
-                placeholder="Search code, name, phone, email..."
+                placeholder="Search code, name, email..."
                 value={search}
                 onChange={handleSearchChange}
                 className="w-full bg-brand-blue-deep/60 border border-brand-blue-light/50 focus:border-brand-gold rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-slate-500 outline-none"
@@ -434,8 +434,8 @@ const AdminDashboard = () => {
                       className="p-3.5 flex items-center justify-between cursor-pointer active:bg-brand-blue-navy/20 select-none"
                     >
                       <div className="space-y-0.5 max-w-[200px]">
-                        <h4 className="text-xs font-bold text-white uppercase truncate">{user.name}</h4>
-                        <p className="text-[10px] text-slate-400 truncate">{user.phone}</p>
+                        <h4 className="text-xs font-bold text-white uppercase truncate">{user.fullName}</h4>
+                        <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
                       </div>
 
                       <div className="flex items-center space-x-3.5">
@@ -456,13 +456,9 @@ const AdminDashboard = () => {
                     {isExpanded && (
                       <div className="p-4 bg-brand-blue-deep/30 border-t border-brand-gold/10 space-y-3.5 text-xs text-slate-300">
                         <div className="grid grid-cols-2 gap-2 text-[11px] leading-relaxed">
-                          <div>
+                          <div className="col-span-2">
                             <span className="text-[9px] text-slate-500 uppercase block">Email Address</span>
                             <span className="text-white break-all">{user.email}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-slate-500 uppercase block">City / Town</span>
-                            <span className="text-white">{user.city}</span>
                           </div>
                           <div>
                             <span className="text-[9px] text-slate-500 uppercase block">Redemption State</span>

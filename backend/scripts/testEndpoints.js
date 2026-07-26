@@ -2,13 +2,14 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Card = require('../models/Card');
-const Otp = require('../models/Otp');
 const Campaign = require('../models/Campaign');
 const Admin = require('../models/Admin');
 const RedemptionLog = require('../models/RedemptionLog');
-const seedDatabase = require('./seed');    console.log('Cleared database collections.');
-
+const seedDatabase = require('./seed');
 const jwt = require('jsonwebtoken');
+
+// Ensure NODE_ENV is set to test so the mock bypass works
+process.env.NODE_ENV = 'test';
 
 // Simple assert helper
 const assert = (condition, message) => {
@@ -20,7 +21,7 @@ const assert = (condition, message) => {
 
 const runTests = async () => {
   console.log('==================================================');
-  console.log('RUNNING LUCKY SCRATCH BACKEND INTEGRATION TESTS');
+  console.log('RUNNING LUCKY SCRATCH GOOGLE OAUTH INTEGRATION TESTS');
   console.log('==================================================\n');
 
   try {
@@ -29,13 +30,12 @@ const runTests = async () => {
     console.log('Connected to MongoDB for testing.');
 
     // 2. Clear collections to start fresh
-    await User.deleteMany({});
-    await Otp.deleteMany({});
+    await User.collection.drop().catch(() => {});
     await Card.deleteMany({});
     await RedemptionLog.deleteMany({});
     await Campaign.deleteMany({});
     await Admin.deleteMany({});
-    console.log('Cleared database collections.');
+    console.log('Cleared database collections and reset indexes.');
 
     // 3. Run seed script
     await seedDatabase();
@@ -51,121 +51,71 @@ const runTests = async () => {
     await campaign.save();
     console.log('Activated campaign for registration tests.');
 
-    // 5. Test OTP Generation & Mail Trigger
-    const testEmail = 'tester@example.com';
-    const { generateAndSendOtp, verifyOtpCode } = require('../services/otpService');
-    const mailResult = await generateAndSendOtp(testEmail);
-    assert(mailResult.devMode === true, 'Nodemailer fallbacks to console log development mode');
+    // 5. Test Google OAuth Login (New User - Auto Registration & Card Assignment)
+    const testEmail1 = 'tester1@example.com';
+    const mockIdToken1 = `mock_google_token_${testEmail1}`;
 
-    // Retrieve generated OTP from DB
-    const otpDoc = await Otp.findOne({ email: testEmail });
-    assert(otpDoc !== null, 'OTP record saved in database');
-    assert(otpDoc.otp.length === 6, 'OTP is a 6-digit string');
-
-    // Test incorrect OTP
-    const verifyFailed = await verifyOtpCode(testEmail, '000000');
-    assert(verifyFailed.success === false, 'Invalid OTP fails validation');
-    
-    // Check attempt increment
-    const otpDocAttempt = await Otp.findOne({ email: testEmail });
-    assert(otpDocAttempt.attempts === 1, 'Verification attempts incremented');
-
-    // Test correct OTP
-    const verifySuccess = await verifyOtpCode(testEmail, otpDoc.otp);
-    assert(verifySuccess.success === true, 'Correct OTP passes validation');
-
-    // 6. Test Registration
-    const otpToken = jwt.sign(
-      { email: testEmail, verified: true },
-      process.env.JWT_SECRET,
-      { expiresIn: '15m' }
-    );
-
-    // Mock controller payload
-    const registerPayload = {
-      name: 'John Tester',
-      phone: '9876543210',
-      city: 'Rajkot',
-      email: testEmail,
-      otpToken
-    };
-
-    // Import controllers manually to test logic directly without network layer
     const authController = require('../controllers/authController');
-    
-    // Mock express res/req
-    let mockUserToken = '';
-    let mockUserId = null;
-    let mockCardId = null;
+
+    let user1Token = '';
+    let user1Id = null;
+    let user1CardId = null;
 
     const mockResRegister = {
-      status: (code) => {
-        assert(code === 201, 'Registration returns 201 Created status');
-        return mockResRegister;
-      },
       json: (data) => {
-        assert(data.success === true, 'Registration reports success');
-        assert(data.token !== undefined, 'Registration issues user JWT');
-        assert(data.user.assignedCard !== null, 'User assigned a scratch card');
-        mockUserToken = data.token;
-        mockUserId = data.user.id;
-        mockCardId = data.user.assignedCard._id;
+        assert(data.success === true, 'Google authentication reports success');
+        assert(data.token !== undefined, 'Google authentication issues user JWT');
+        assert(data.user.fullName === 'Mock User tester1', 'Correct fullName mapped from Google profile');
+        assert(data.user.email === testEmail1, 'Correct email mapped from Google profile');
+        assert(data.user.assignedCard !== null, 'New user is automatically assigned a scratch card');
+        user1Token = data.token;
+        user1Id = data.user.id;
+        user1CardId = data.user.assignedCard._id;
       }
     };
 
-    await authController.registerUser({ body: registerPayload }, mockResRegister);
+    console.log('Attempting Google login for new user...');
+    await authController.googleLogin({ body: { idToken: mockIdToken1 } }, mockResRegister);
 
-    // 7. Test Double Claim Protections
-    // Create new OTP token for same email
-    const duplicateEmailToken = jwt.sign(
-      { email: testEmail, verified: true },
-      process.env.JWT_SECRET
-    );
+    // Verify card assignment in DB
+    const cardDoc1 = await Card.findById(user1CardId);
+    assert(cardDoc1.assigned === true, 'Assigned card is marked assigned in database');
+    assert(cardDoc1.assignedUser.toString() === user1Id.toString(), 'Card is linked to correct user ID');
 
-    // Set OTP to verified in DB to bypass verify check
-    await Otp.create({ email: testEmail, otp: '123456', expiry: new Date(Date.now() + 5000), verified: true });
+    const userDoc1 = await User.findById(user1Id);
+    assert(userDoc1.assignedCard.toString() === user1CardId.toString(), 'User is linked to correct card ID');
 
-    const mockResDuplicateEmail = {
-      status: (code) => {
-        assert(code === 400, 'Duplicate email registration returns 400 Bad Request status');
-        return mockResDuplicateEmail;
-      },
+    // 6. Test Google OAuth Login (Existing User - Persistent Login & No Duplicate Cards)
+    let user1LoginCardId = null;
+    const mockResLogin = {
       json: (data) => {
-        assert(data.success === false, 'Duplicate email registration reports failure');
-        assert(data.message.includes('email'), 'Rejects with email warning');
+        assert(data.success === true, 'Google login for existing user reports success');
+        assert(data.token !== undefined, 'Google login issues user JWT');
+        assert(data.user.id.toString() === user1Id.toString(), 'Logs into the same user account');
+        assert(data.user.assignedCard !== null, 'Existing user retrieves their assigned card');
+        user1LoginCardId = data.user.assignedCard._id;
       }
     };
 
-    await authController.registerUser({ body: { ...registerPayload, otpToken: duplicateEmailToken } }, mockResDuplicateEmail);
+    console.log('Attempting Google login for existing user...');
+    await authController.googleLogin({ body: { idToken: mockIdToken1 } }, mockResLogin);
+    assert(user1LoginCardId.toString() === user1CardId.toString(), 'Existing user keeps their original card');
 
-    // Test Duplicate Phone Number
-    const duplicatePhoneEmail = 'different@example.com';
-    const duplicatePhoneToken = jwt.sign(
-      { email: duplicatePhoneEmail, verified: true },
-      process.env.JWT_SECRET
-    );
-    await Otp.create({ email: duplicatePhoneEmail, otp: '123456', expiry: new Date(Date.now() + 5000), verified: true });
+    // 7. Test Google OAuth Login (Second User - Unique Card Assignment)
+    const testEmail2 = 'tester2@example.com';
+    const mockIdToken2 = `mock_google_token_${testEmail2}`;
+    let user2CardId = null;
 
-    const mockResDuplicatePhone = {
-      status: (code) => {
-        assert(code === 400, 'Duplicate phone registration returns 400 Bad Request status');
-        return mockResDuplicatePhone;
-      },
+    const mockResRegister2 = {
       json: (data) => {
-        assert(data.success === false, 'Duplicate phone registration reports failure');
-        assert(data.message.includes('phone'), 'Rejects with phone warning');
+        assert(data.success === true, 'Google authentication for user 2 reports success');
+        user2CardId = data.user.assignedCard._id;
       }
     };
 
-    await authController.registerUser({ 
-      body: { 
-        name: 'Another Tester', 
-        phone: '9876543210', // Same phone
-        city: 'Morbi', 
-        email: duplicatePhoneEmail, 
-        otpToken: duplicatePhoneToken 
-      } 
-    }, mockResDuplicatePhone);
+    console.log('Attempting Google login for second user...');
+    await authController.googleLogin({ body: { idToken: mockIdToken2 } }, mockResRegister2);
+    assert(user2CardId.toString() !== user1CardId.toString(), 'Second user gets a different unique scratch card');
 
     // 8. Test Admin Operations
     const adminController = require('../controllers/adminController');
@@ -174,11 +124,12 @@ const runTests = async () => {
     const mockResStats = {
       json: (data) => {
         assert(data.success === true, 'Admin stats loaded successfully');
-        assert(data.stats.totalUsers === 1, 'Admin stats counts exactly 1 user');
-        assert(data.stats.cardsAssigned === 1, 'Admin stats counts exactly 1 card assigned');
-        assert(data.stats.cardsRemaining === 499, 'Admin stats counts exactly 499 cards remaining');
+        assert(data.stats.totalUsers === 2, 'Admin stats counts exactly 2 users');
+        assert(data.stats.cardsAssigned === 2, 'Admin stats counts exactly 2 cards assigned');
+        assert(data.stats.cardsRemaining === 498, 'Admin stats counts exactly 498 cards remaining');
       }
     };
+    console.log('Checking admin stats...');
     await adminController.getStats({}, mockResStats);
 
     // Test Admin Redemption
@@ -189,11 +140,12 @@ const runTests = async () => {
         assert(data.card.redeemed === true, 'Card status updated to redeemed');
       }
     };
-    await adminController.redeemCard({ params: { cardId: mockCardId }, admin: mockAdmin }, mockResRedeem);
+    console.log('Redeeming card 1...');
+    await adminController.redeemCard({ params: { cardId: user1CardId }, admin: mockAdmin }, mockResRedeem);
 
     // Double check database is updated
-    const cardDoc = await Card.findById(mockCardId);
-    assert(cardDoc.redeemed === true, 'Card redemption saved in database');
+    const cardDocRedeemed = await Card.findById(user1CardId);
+    assert(cardDocRedeemed.redeemed === true, 'Card redemption saved in database');
 
     // Test Redemption cancellation
     const mockResCancel = {
@@ -202,10 +154,11 @@ const runTests = async () => {
         assert(data.card.redeemed === false, 'Card status updated back to active');
       }
     };
-    await adminController.cancelRedemption({ params: { cardId: mockCardId }, admin: mockAdmin }, mockResCancel);
+    console.log('Cancelling redemption of card 1...');
+    await adminController.cancelRedemption({ params: { cardId: user1CardId }, admin: mockAdmin }, mockResCancel);
 
     // Double check database is reverted
-    const cardDocReverted = await Card.findById(mockCardId);
+    const cardDocReverted = await Card.findById(user1CardId);
     assert(cardDocReverted.redeemed === false, 'Card redemption reversion saved in database');
 
     console.log('\n==================================================');
@@ -223,3 +176,4 @@ const runTests = async () => {
 };
 
 runTests();
+

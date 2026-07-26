@@ -15,13 +15,13 @@ const ComingSoon = () => {
       try {
         const res = await API.get('/campaign/status');
         const { status, startDate } = res.data;
-        
+
         if (status === 'active') {
           // If already active, redirect immediately
           navigate('/', { replace: true });
           return;
         }
-        
+
         setCampaignStart(new Date(startDate));
         setLoading(false);
       } catch (err) {
@@ -72,7 +72,7 @@ const ComingSoon = () => {
   return (
     <MobileContainer hideNav={true}>
       <div className="flex flex-col items-center text-center space-y-6 pt-4">
-        
+
         {/* Card Header & Badge */}
         <div>
           <span className="bg-brand-gold/10 border border-brand-gold/40 text-brand-gold font-bold px-3 py-1 rounded-full text-xs tracking-wider uppercase">
@@ -85,9 +85,9 @@ const ComingSoon = () => {
 
         {/* Shop Image */}
         <div className="w-full h-44 sm:h-60 rounded-2xl overflow-hidden shadow-lg border border-brand-gold/20 relative">
-          <img 
-            src="/shop.png" 
-            alt="New Ramdev Mobile Shapar Store" 
+          <img
+            src="/shop-img1.jpeg"
+            alt="New Ramdev Mobile Shapar Store"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-brand-blue-deep/90 via-transparent to-transparent flex items-end p-3 sm:p-4">
@@ -121,7 +121,7 @@ const ComingSoon = () => {
         <div className="text-left w-full space-y-2">
           <h4 className="text-xs sm:text-sm text-brand-gold uppercase tracking-wider font-bold">About the Campaign</h4>
           <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
-            Get ready to win exciting rewards! With every purchase, verify your email and receive a unique scratch card. Prizes include <strong>6D tempered glass</strong>, <strong>data cables</strong>, cash vouchers worth up to <strong>₹200</strong>!
+            Get ready to win exciting rewards! With every purchase, continue with Google and receive a unique scratch card. Prizes include <strong>6D tempered glass</strong>, <strong>data cables</strong>, cash vouchers worth up to <strong>₹200</strong>!
           </p>
         </div>
 
@@ -138,17 +138,17 @@ const ComingSoon = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t border-brand-blue-light/20">
-            <a 
-              href="tel:+919999999999" 
+            <a
+              href="tel:+919999999999"
               className="flex flex-col items-center justify-center p-2.5 sm:p-4 bg-brand-blue-deep rounded-xl border border-brand-blue-light/30 text-brand-gold hover:bg-brand-blue-light/20 transition-all text-center"
             >
               <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-[9px] sm:text-[11px] mt-1 font-semibold">Call Now</span>
             </a>
 
-            <a 
-              href="https://wa.me/919999999999" 
-              target="_blank" 
+            <a
+              href="https://wa.me/919999999999"
+              target="_blank"
               rel="noopener noreferrer"
               className="flex flex-col items-center justify-center p-2.5 sm:p-4 bg-brand-blue-deep rounded-xl border border-brand-blue-light/30 text-brand-gold hover:bg-brand-blue-light/20 transition-all text-center"
             >
@@ -156,9 +156,9 @@ const ComingSoon = () => {
               <span className="text-[9px] sm:text-[11px] mt-1 font-semibold">WhatsApp</span>
             </a>
 
-            <a 
-              href="https://maps.google.com/?q=Ramdev+Mobile+Shapar" 
-              target="_blank" 
+            <a
+              href="https://maps.google.com/?q=Ramdev+Mobile+Shapar"
+              target="_blank"
               rel="noopener noreferrer"
               className="flex flex-col items-center justify-center p-2.5 sm:p-4 bg-brand-blue-deep rounded-xl border border-brand-blue-light/30 text-brand-gold hover:bg-brand-blue-light/20 transition-all text-center"
             >

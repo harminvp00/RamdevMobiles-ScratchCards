@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  name: {
+  googleId: {
     type: String,
-    required: [true, 'Name is required'],
-    trim: true,
+    required: [true, 'Google ID is required'],
+    unique: true,
+    index: true,
   },
   email: {
     type: String,
@@ -14,23 +15,28 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     index: true,
   },
-  phone: {
+  fullName: {
     type: String,
-    required: [true, 'Phone number is required'],
-    unique: true,
+    required: [true, 'Full name is required'],
     trim: true,
-    index: true,
   },
-  city: {
+  profilePicture: {
     type: String,
-    required: [true, 'City is required'],
     trim: true,
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false,
   },
   assignedCard: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',
     unique: true,
     sparse: true, // Allow null before card is assigned
+  },
+  loginProvider: {
+    type: String,
+    default: 'google',
   },
   createdAt: {
     type: Date,
@@ -39,3 +45,4 @@ const UserSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('User', UserSchema);
+

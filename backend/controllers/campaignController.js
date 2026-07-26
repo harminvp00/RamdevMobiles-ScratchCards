@@ -65,9 +65,8 @@ const getWinners = async (req, res) => {
       .map(card => ({
         id: card._id,
         reward: card.reward,
-        name: maskString(card.assignedUser.name, 'name'),
+        name: maskString(card.assignedUser.fullName, 'name'),
         email: maskString(card.assignedUser.email, 'email'),
-        phone: maskString(card.assignedUser.phone, 'phone'),
         date: card.createdDate || card.redeemedDate || new Date(),
       }))
       .sort((a, b) => b.date - a.date);

@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0c0a1a; /* Dark premium desktop backdrop */
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  color: #f8fafc;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom scratch card interaction protection */
+.scratch-canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(11, 36, 71, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+/* Shimmer animation keyframes for gold text */
+.gold-shimmer {
+  background: linear-gradient(
+    to right,
+    #aa7c11 0%,
+    #d4af37 25%,
+    #ffd700 50%,
+    #d4af37 75%,
+    #aa7c11 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 4s infinite linear;
+}
+
+/* Hide native scrollbars on mobile wrappers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Premium buttons and input rules */
+input, button, select {
+  font-family: 'Outfit', 'Inter', sans-serif;
+}

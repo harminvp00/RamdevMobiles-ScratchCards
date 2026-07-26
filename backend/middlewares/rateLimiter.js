@@ -15,7 +15,7 @@ const apiLimiter = rateLimit({
 // Strict OTP request limiter (max 3 OTP requests per 10 minutes per IP)
 const otpLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 3, // 3 otp request per 10 mins for the each IP Addresses
+  max: 100, // 100 otp request per 10 mins for the each IP Addresses
   message: {
     success: false,
     message: 'Too many OTP requests. Please wait 10 minutes before requesting again.'

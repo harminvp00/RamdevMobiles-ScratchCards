@@ -1,16 +1,38 @@
+const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Card = require('../models/Card');
-const Otp = require('../models/Otp');
 const Campaign = require('../models/Campaign');
-const { generateAndSendOtp, verifyOtpCode } = require('../services/otpService');
 
-// Request OTP
-const requestOtp = async (req, res) => {
-  const { email } = req.body;
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Verify Google Token Helper (with test environment mock bypass)
+const verifyGoogleToken = async (idToken) => {
+  if (process.env.NODE_ENV === 'test' && idToken.startsWith('mock_google_token_')) {
+    const parts = idToken.split('_');
+    const mockEmail = parts[parts.length - 1];
+    return {
+      sub: `mock_google_id_${mockEmail}`,
+      email: mockEmail,
+      name: `Mock User ${mockEmail.split('@')[0]}`,
+      picture: 'https://lh3.googleusercontent.com/a/mock',
+      email_verified: true,
+    };
+  }
+
+  const ticket = await client.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  return ticket.getPayload();
+};
+
+// Google Authenticate (Login or Auto-Register)
+const googleLogin = async (req, res) => {
+  const { idToken } = req.body;
 
   try {
-    // Check if campaign is coming_soon or paused or ended
+    // 1. Check campaign status
     const campaign = await Campaign.findOne();
     if (campaign && campaign.status === 'coming_soon') {
       return res.status(400).json({ success: false, message: 'Campaign has not started yet.' });
@@ -22,172 +44,102 @@ const requestOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Campaign has ended. All rewards claimed.' });
     }
 
-    // Check card availability
-    const unassignedCount = await Card.countDocuments({ assigned: false });
-    if (unassignedCount === 0) {
-      return res.status(400).json({ success: false, message: 'All scratch cards have been claimed. Thank You.' });
-    }
-
-    // Generate and send OTP
-    const mailResult = await generateAndSendOtp(email);
-
-    res.json({
-      success: true,
-      message: mailResult.devMode 
-        ? 'OTP sent successfully (Development: check server logs).' 
-        : 'OTP sent successfully to your email.',
-    });
-  } catch (error) {
-    console.error('Request OTP Error:', error);
-    res.status(500).json({ success: false, message: 'Server error requesting OTP' });
-  }
-};
-
-// Verify OTP
-const verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
-
-  try {
-    const verification = await verifyOtpCode(email, otp);
-    if (!verification.success) {
-      return res.status(400).json({ success: false, message: verification.message });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email }).populate('assignedCard');
-
-    if (existingUser) {
-      // User is already registered! Log them in directly
-      const token = jwt.sign(
-        { id: existingUser._id, role: 'customer' },
-        process.env.JWT_SECRET,
-        { expiresIn: '30d' }
-      );
-
-      return res.json({
-        success: true,
-        isRegistered: true,
-        token,
-        user: {
-          id: existingUser._id,
-          name: existingUser.name,
-          email: existingUser.email,
-          phone: existingUser.phone,
-          city: existingUser.city,
-          assignedCard: existingUser.assignedCard,
-        },
-      });
-    }
-
-    // User is new! Issue a temporary verification token to permit registration
-    const otpToken = jwt.sign(
-      { email, verified: true },
-      process.env.JWT_SECRET,
-      { expiresIn: '15m' } // 15 mins to fill details
-    );
-
-    res.json({
-      success: true,
-      isRegistered: false,
-      otpToken,
-      message: 'OTP verified. Please proceed to complete your registration.',
-    });
-  } catch (error) {
-    console.error('Verify OTP Error:', error);
-    res.status(500).json({ success: false, message: 'Server error verifying OTP' });
-  }
-};
-
-// Register New User and Assign Scratch Card (Atomic)
-const registerUser = async (req, res) => {
-  const { name, phone, city, otpToken } = req.body;
-
-  try {
-    // 1. Verify otpToken
-    let decoded;
+    // 2. Verify Google Token
+    let payload;
     try {
-      decoded = jwt.verify(otpToken, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(400).json({ success: false, message: 'Session expired. Please verify OTP again.' });
+      payload = await verifyGoogleToken(idToken);
+    } catch (tokenErr) {
+      console.error('Google token verification error:', tokenErr);
+      return res.status(401).json({ success: false, message: 'Invalid Google credentials.' });
     }
 
-    const { email, verified } = decoded;
-    if (!verified) {
-      return res.status(400).json({ success: false, message: 'Invalid registration session.' });
+    const { sub: googleId, email, name: fullName, picture: profilePicture, email_verified: emailVerified } = payload;
+
+    if (!googleId || !email) {
+      return res.status(400).json({ success: false, message: 'Google profile is missing required identification info.' });
     }
 
-    // Double check OTP collection to make sure it was marked verified (prevents replay attacks)
-    const otpDoc = await Otp.findOne({ email });
-    if (!otpDoc || !otpDoc.verified) {
-      return res.status(400).json({ success: false, message: 'Email verification required.' });
+    // 3. Find or Create User
+    let user = await User.findOne({ googleId }).populate('assignedCard');
+
+    if (!user) {
+      // Check if user with same email exists
+      user = await User.findOne({ email }).populate('assignedCard');
+      if (user) {
+        // Link googleId to existing user
+        user.googleId = googleId;
+        user.fullName = fullName;
+        if (profilePicture) user.profilePicture = profilePicture;
+        user.emailVerified = emailVerified;
+        user.loginProvider = 'google';
+        await user.save();
+      } else {
+        // Double check card availability
+        const unassignedCount = await Card.countDocuments({ assigned: false });
+        if (unassignedCount === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'All scratch cards have been claimed. Thank you for your interest!'
+          });
+        }
+
+        // Atomically assign a card
+        const assignedCard = await Card.findOneAndUpdate(
+          { assigned: false },
+          { assigned: true, createdDate: new Date() },
+          { new: true }
+        );
+
+        if (!assignedCard) {
+          return res.status(400).json({
+            success: false,
+            message: 'All scratch cards have been claimed. Thank you for your interest!'
+          });
+        }
+
+        // Create new user
+        user = new User({
+          googleId,
+          email,
+          fullName,
+          profilePicture,
+          emailVerified,
+          assignedCard: assignedCard._id,
+          loginProvider: 'google',
+        });
+
+        await user.save();
+
+        assignedCard.assignedUser = user._id;
+        await assignedCard.save();
+
+        // Re-populate card on user instance
+        user.assignedCard = assignedCard;
+      }
     }
 
-    // 2. Uniqueness Checks
-    const emailExists = await User.findOne({ email });
-    if (emailExists) {
-      return res.status(400).json({ success: false, message: 'This email is already registered.' });
-    }
-
-    const phoneExists = await User.findOne({ phone });
-    if (phoneExists) {
-      return res.status(400).json({ success: false, message: 'This phone number is already registered. One card per phone.' });
-    }
-
-    // 3. Atomically assign a card
-    // findOneAndUpdate is atomic on MongoDB and guarantees that no concurrent request gets the same card.
-    const assignedCard = await Card.findOneAndUpdate(
-      { assigned: false },
-      { assigned: true, createdDate: new Date() },
-      { new: true }
-    );
-
-    if (!assignedCard) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'All scratch cards have been claimed. Thank you for your interest!' 
-      });
-    }
-
-    // 4. Create User
-    const user = new User({
-      name,
-      email,
-      phone,
-      city,
-      assignedCard: assignedCard._id,
-    });
-
-    await user.save();
-
-    // 5. Link Card to User
-    assignedCard.assignedUser = user._id;
-    await assignedCard.save();
-
-    // 6. Delete OTP entry so it cannot be reused
-    await Otp.deleteOne({ email });
-
-    // 7. Issue user JWT Token
+    // 4. Generate user JWT session
     const token = jwt.sign(
       { id: user._id, role: 'customer' },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
 
-    res.status(201).json({
+    res.json({
       success: true,
       token,
       user: {
         id: user._id,
-        name: user.name,
+        fullName: user.fullName,
         email: user.email,
-        phone: user.phone,
-        city: user.city,
-        assignedCard,
+        profilePicture: user.profilePicture,
+        assignedCard: user.assignedCard,
       },
     });
+
   } catch (error) {
-    console.error('Registration Error:', error);
-    res.status(500).json({ success: false, message: 'Server error during registration' });
+    console.error('Google Login Error:', error);
+    res.status(500).json({ success: false, message: 'Server error during Google authentication' });
   }
 };
 
@@ -203,10 +155,9 @@ const getCurrentUser = async (req, res) => {
       success: true,
       user: {
         id: user._id,
-        name: user.name,
+        fullName: user.fullName,
         email: user.email,
-        phone: user.phone,
-        city: user.city,
+        profilePicture: user.profilePicture,
         assignedCard: user.assignedCard,
       },
     });
@@ -216,8 +167,7 @@ const getCurrentUser = async (req, res) => {
 };
 
 module.exports = {
-  requestOtp,
-  verifyOtp,
-  registerUser,
+  googleLogin,
   getCurrentUser,
 };
+

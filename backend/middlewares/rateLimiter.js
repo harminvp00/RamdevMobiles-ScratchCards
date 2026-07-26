@@ -12,18 +12,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Strict OTP request limiter (max 3 OTP requests per 10 minutes per IP)
-const otpLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100, // 100 otp request per 10 mins for the each IP Addresses
-  message: {
-    success: false,
-    message: 'Too many OTP requests. Please wait 10 minutes before requesting again.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 // Strict login & registration attempts limiter (max 15 registration/login requests per 15 minutes per IP)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -53,7 +41,6 @@ const globalAuthLimiter = rateLimit({
 
 module.exports = {
   apiLimiter,
-  otpLimiter,
   authLimiter,
   globalAuthLimiter,
 };

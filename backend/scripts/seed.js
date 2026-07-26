@@ -181,8 +181,12 @@ const seedAdmin = async () => {
   const adminCount = await Admin.countDocuments();
   if (adminCount > 0) return;
 
-  const username = process.env.ADMIN_USERNAME || 'admin';
-  const password = process.env.ADMIN_PASSWORD || 'RamdevMobile2026';
+  const username = process.env.ADMIN_USERNAME;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!username || !password) {
+    throw new Error('CRITICAL CONFIG ERROR: Both ADMIN_USERNAME and ADMIN_PASSWORD environment variables must be defined to seed the admin account!');
+  }
 
   await Admin.create({ username, password });
   console.log(`Admin account created with username: ${username}`);

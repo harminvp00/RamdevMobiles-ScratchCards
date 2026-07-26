@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Landing from './views/Landing';
 import ComingSoon from './views/ComingSoon';
 import OtpVerification from './views/OtpVerification';
-import RegisterDetails from './views/RegisterDetails';
 import ScratchScreen from './views/ScratchScreen';
 import Dashboard from './views/Dashboard';
 import Winners from './views/Winners';
@@ -22,7 +21,6 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/coming-soon" element={<ComingSoon />} />
         <Route path="/verify" element={<OtpVerification />} />
-        <Route path="/register" element={<RegisterDetails />} />
         <Route path="/scratch" element={<ScratchScreen />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/winners" element={<Winners />} />

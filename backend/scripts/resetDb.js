@@ -4,7 +4,6 @@ const Card = require('../models/Card');
 const User = require('../models/User');
 const Campaign = require('../models/Campaign');
 const Admin = require('../models/Admin');
-const Otp = require('../models/Otp');
 const RedemptionLog = require('../models/RedemptionLog');
 const seedDatabase = require('./seed');
 
@@ -18,10 +17,9 @@ const resetDb = async () => {
     // Remove all documents from all collections
     console.log('Clearing all collections...');
     await Card.deleteMany({});
-    await User.deleteMany({});
+    await User.collection.drop().catch(() => {});
     await Campaign.deleteMany({});
     await Admin.deleteMany({});
-    await Otp.deleteMany({});
     await RedemptionLog.deleteMany({});
     console.log('✓ Cleared all data successfully.');
 

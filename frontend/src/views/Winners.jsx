@@ -65,10 +65,8 @@ const Winners = () => {
               >
                 <div className="space-y-1 max-w-[65%]">
                   <div className="font-bold text-white text-sm sm:text-base truncate">{w.name}</div>
-                  <div className="text-[10px] sm:text-xs text-slate-400 flex items-center space-x-1">
-                    <span>{w.city || 'User'}</span>
-                    <span>•</span>
-                    <span className="font-mono">{w.phone ? `+${w.phone.substring(0,2)}*****${w.phone.substring(7)}` : 'N/A'}</span>
+                  <div className="text-[10px] sm:text-xs text-slate-400">
+                    <span className="font-mono">{w.email}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
